@@ -81,14 +81,27 @@ test-docker-compose:
   variables:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
   before_script:
-    - apk add --no-cache openjdk17 maven
     - docker-compose up -d
     - sleep 30
   script:
     - |
       docker-compose exec -T mysql mysql -uroot -proot testautomation < src/main/resources/database/init.sql || true
-    - mvn clean test -Dselenium.grid.url=http://localhost:4444/wd/hub
+    - |
+      docker run --rm \
+        --network container:selenium-hub \
+        -v $(pwd):/app \
+        -w /app \
+        -e SELENIUM_GRID_URL=http://selenium-hub:4444/wd/hub \
+        -e SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/$MYSQL_DATABASE \
+        -e SPRING_DATASOURCE_USERNAME=$MYSQL_USER \
+        -e SPRING_DATASOURCE_PASSWORD=$MYSQL_PASSWORD \
+        -e ELASTICSEARCH_ENABLED=$ELASTICSEARCH_ENABLED \
+        -e ELASTICSEARCH_HOST=$ELASTICSEARCH_HOST \
+        -e ELASTICSEARCH_PORT=$ELASTICSEARCH_PORT \
+        maven:3.9.5-eclipse-temurin-17 \
+        mvn clean test
   after_script:
     - docker-compose logs selenium-hub
     - docker-compose logs selenium-node-chrome
