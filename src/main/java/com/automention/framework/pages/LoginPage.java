@@ -43,6 +43,16 @@ public class LoginPage {
     @FindBy(linkText = "Log out")
     private WebElement logoutLink;
 
+    // Error message can be found by id, class, or xpath - trying multiple approaches
+    @FindBy(id = "error")
+    private WebElement errorMessageById;
+
+    @FindBy(className = "error")
+    private WebElement errorMessageByClass;
+
+    @FindBy(xpath = "//div[contains(@class, 'error') or contains(@id, 'error')]")
+    private WebElement errorMessageByXpath;
+
     private WebDriver driver;
     private WebDriverWait wait;
 
@@ -145,6 +155,76 @@ public class LoginPage {
         } catch (Exception e) {
             logger.error("Error getting success message: {}", e.getMessage(), e);
             return "";
+        }
+    }
+
+    /**
+     * Get error message element (tries multiple selectors)
+     */
+    private WebElement getErrorMessageElement() {
+        initElements();
+        WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        
+        // Try to find error message using multiple selectors
+        try {
+            shortWait.until(ExpectedConditions.visibilityOf(errorMessageById));
+            return errorMessageById;
+        } catch (Exception e) {
+            logger.debug("Error message not found by id, trying class name");
+        }
+        
+        try {
+            shortWait.until(ExpectedConditions.visibilityOf(errorMessageByClass));
+            return errorMessageByClass;
+        } catch (Exception e) {
+            logger.debug("Error message not found by class, trying xpath");
+        }
+        
+        try {
+            shortWait.until(ExpectedConditions.visibilityOf(errorMessageByXpath));
+            return errorMessageByXpath;
+        } catch (Exception e) {
+            logger.debug("Error message not found by xpath, trying text-based search");
+        }
+        
+        // Last resort: try to find by text content
+        try {
+            org.openqa.selenium.By byText = org.openqa.selenium.By.xpath("//*[contains(text(), 'password is invalid') or contains(text(), 'Password is invalid') or contains(text(), 'invalid')]");
+            shortWait.until(ExpectedConditions.presenceOfElementLocated(byText));
+            return driver.findElement(byText);
+        } catch (Exception e) {
+            logger.error("Could not find error message element using any selector");
+            throw new org.openqa.selenium.NoSuchElementException("Error message element not found");
+        }
+    }
+
+    /**
+     * Get error message text
+     */
+    public String getErrorMessage() {
+        try {
+            WebElement errorElement = getErrorMessageElement();
+            String errorText = errorElement.getText();
+            logger.info("Error message found: {}", errorText);
+            return errorText;
+        } catch (Exception e) {
+            logger.error("Error getting error message: {}", e.getMessage(), e);
+            return "";
+        }
+    }
+
+    /**
+     * Verify error message is displayed
+     */
+    public boolean verifyErrorMessageDisplayed() {
+        try {
+            WebElement errorElement = getErrorMessageElement();
+            boolean isDisplayed = errorElement.isDisplayed();
+            logger.info("Error message displayed: {}", isDisplayed);
+            return isDisplayed;
+        } catch (Exception e) {
+            logger.error("Error message not found: {}", e.getMessage());
+            return false;
         }
     }
 

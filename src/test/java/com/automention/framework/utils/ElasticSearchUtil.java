@@ -82,9 +82,36 @@ public class ElasticSearchUtil {
             document.put("screenshotPath", screenshotPath);
             document.put("errorMessage", errorMessage != null ? errorMessage : "");
             
+            // Extract featurename, testCaseName, and loginMessage from additionalData
+            String featureName = "Unknown";
+            String testCaseName = scenarioName; // Default to scenario name if not found
+            String loginMessage = ""; // Login success or error message
             if (additionalData != null) {
+                Object featureNameObj = additionalData.get("featurename");
+                if (featureNameObj != null) {
+                    featureName = featureNameObj.toString();
+                }
+                Object testCaseNameObj = additionalData.get("testCaseName");
+                if (testCaseNameObj != null) {
+                    testCaseName = testCaseNameObj.toString();
+                }
+                Object loginMessageObj = additionalData.get("loginMessage");
+                if (loginMessageObj != null) {
+                    loginMessage = loginMessageObj.toString();
+                }
                 document.putAll(additionalData);
             }
+            // Add featurename and testCaseName as top-level fields (like status) for Kibana keyword breakdown
+            document.put("featurename", featureName);
+            document.put("testCaseName", testCaseName);
+            
+            // Add loginMessage as top-level field for Kibana visualization
+            // This will show "Congratulations student. You successfully logged in!" or "Your password is invalid!"
+            document.put("loginMessage", loginMessage);
+            
+            // Add combined field for breakdown showing feature name with status
+            // This allows Kibana to show "FeatureName - PASSED" or "FeatureName - FAILED" in breakdowns
+            document.put("featurename_status", featureName + " - " + status);
 
             // Encode screenshot as base64 if path is provided
             if (screenshotPath != null && !screenshotPath.isEmpty()) {

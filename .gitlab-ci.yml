@@ -20,7 +20,7 @@ variables:
   ELASTICSEARCH_HOST: "elasticsearch"
   ELASTICSEARCH_PORT: "9200"
   TEST_TAGS:
-    value: "not @Ignore"
+    value: "not @Ignore" # for specific senarario you have to just change here like (@Scenario1, @Scenario2,@Scenario3) by default it will run all.
     description: "Cucumber tags to filter tests (e.g. @Scenario1, @Scenario2)"
 
 # Cache Maven dependencies

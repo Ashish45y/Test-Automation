@@ -4,6 +4,7 @@ import com.automention.framework.config.ApplicationConfig;
 import com.automention.framework.driver.WebDriverManager;
 import com.automention.framework.pages.LoginPage;
 import com.automention.framework.utils.ScreenshotUtil;
+import com.automention.framework.utils.TestContext;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -89,6 +90,8 @@ public class LoginStepDefinitions {
             String message = loginPage.getSuccessMessage();
             Assert.assertNotNull(message, "Success message is null");
             Assert.assertFalse(message.isEmpty(), "Success message is empty");
+            // Store the success message in context for Kibana
+            TestContext.setLoginMessage(message);
             logger.info("Success message: {}", message);
         } catch (Exception e) {
             logger.error("Error verifying success message: {}", e.getMessage(), e);
@@ -116,6 +119,58 @@ public class LoginStepDefinitions {
             logger.info("Logout verification passed");
         } catch (Exception e) {
             logger.error("Error verifying logout: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @Then("I should see the error message {string}")
+    public void iShouldSeeTheErrorMessage(String expectedErrorMessage) {
+        try {
+            logger.info("Verifying error message: {}", expectedErrorMessage);
+            boolean isErrorDisplayed = loginPage.verifyErrorMessageDisplayed();
+            Assert.assertTrue(isErrorDisplayed, "Error message is not displayed");
+            
+            String actualErrorMessage = loginPage.getErrorMessage();
+            Assert.assertEquals(actualErrorMessage, expectedErrorMessage, 
+                "Error message does not match. Expected: " + expectedErrorMessage + ", Actual: " + actualErrorMessage);
+            
+            // Store the error message in context for Kibana
+            TestContext.setLoginMessage(actualErrorMessage);
+            
+            screenshotUtil.captureScreenshot("LoginError");
+            logger.info("Error message verification passed: {}", actualErrorMessage);
+        } catch (Exception e) {
+            logger.error("Error verifying error message: {}", e.getMessage(), e);
+            screenshotUtil.captureScreenshot("LoginErrorFailure");
+            throw e;
+        }
+    }
+
+    @Then("I should not be successfully logged in")
+    public void iShouldNotBeSuccessfullyLoggedIn() {
+        try {
+            logger.info("Verifying that login was not successful");
+            boolean isLoggedIn = loginPage.verifyLoginSuccess();
+            Assert.assertFalse(isLoggedIn, "Login was unexpectedly successful");
+            
+            // Try to capture error message if available
+            try {
+                if (loginPage.verifyErrorMessageDisplayed()) {
+                    String errorMsg = loginPage.getErrorMessage();
+                    if (errorMsg != null && !errorMsg.isEmpty()) {
+                        TestContext.setLoginMessage(errorMsg);
+                        logger.info("Error message captured: {}", errorMsg);
+                    }
+                }
+            } catch (Exception e) {
+                logger.debug("Could not capture error message: {}", e.getMessage());
+            }
+            
+            screenshotUtil.captureScreenshot("LoginFailure");
+            logger.info("Login failure verification passed");
+        } catch (Exception e) {
+            logger.error("Error verifying login failure: {}", e.getMessage(), e);
+            screenshotUtil.captureScreenshot("LoginFailureError");
             throw e;
         }
     }

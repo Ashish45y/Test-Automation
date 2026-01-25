@@ -4,6 +4,7 @@ import com.automention.framework.config.ApplicationConfig;
 import com.automention.framework.driver.WebDriverManager;
 import com.automention.framework.utils.ElasticSearchUtil;
 import com.automention.framework.utils.ScreenshotUtil;
+import com.automention.framework.utils.TestContext;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
@@ -54,15 +55,29 @@ public class Hooks {
                 logger.warn("Could not capture screenshot in @After: {}", e.getMessage());
             }
 
+            // Extract feature name from scenario URI
+            String featureName = extractFeatureName(scenario.getUri().toString());
+
             // Send result to Elasticsearch for Kibana dashboards
             Map<String, Object> additionalData = new HashMap<>();
             additionalData.put("tags", scenario.getSourceTagNames());
             additionalData.put("thread", Thread.currentThread().getName());
             additionalData.put("browser", config.getBrowser());
             additionalData.put("gridUrl", config.getSeleniumGridUrl());
+            additionalData.put("featurename", featureName);
+            additionalData.put("testCaseName", featureName);
+            
+            // Get login message from context (success or error message)
+            String loginMessage = TestContext.getLoginMessage();
+            if (loginMessage != null && !loginMessage.isEmpty()) {
+                additionalData.put("loginMessage", loginMessage);
+            }
 
             String errorMessage = scenario.isFailed() ? "Scenario failed" : null;
             elasticSearchUtil.sendTestResult(scenario.getName(), status, screenshotPath, errorMessage, additionalData);
+            
+            // Clear the context after sending to Elasticsearch
+            TestContext.clearLoginMessage();
             
             // Quit WebDriver
             if (webDriverManager != null) {
@@ -86,5 +101,29 @@ public class Hooks {
                 .trim()
                 .replaceAll("[\\\\/:*?\"<>|]", "_")
                 .replaceAll("\\s+", "_");
+    }
+
+    /**
+     * Extract feature file name from scenario URI
+     */
+    private static String extractFeatureName(String uri) {
+        if (uri == null || uri.isEmpty()) {
+            return "Unknown";
+        }
+        try {
+            // Extract filename from URI (e.g., "file:///path/to/Scenario1_LoginTest.feature" -> "Scenario1_LoginTest.feature")
+            String fileName = uri.substring(uri.lastIndexOf('/') + 1);
+            if (fileName.contains("\\")) {
+                fileName = fileName.substring(fileName.lastIndexOf('\\') + 1);
+            }
+            // Remove .feature extension for cleaner display
+            if (fileName.endsWith(".feature")) {
+                fileName = fileName.substring(0, fileName.length() - 8);
+            }
+            return fileName;
+        } catch (Exception e) {
+            logger.warn("Error extracting feature name from URI: {}", uri);
+            return "Unknown";
+        }
     }
 }
