@@ -41,7 +41,9 @@ Run the prerequisite check script:
 ```bash
 ./check-prerequisites.sh
 ```
-
+## before run the .sh file(script file run this command only first time.)
+-chmod +x followed by the filename.
+-like (chmod +x filename.sh)
 This will verify:
 - Java 17+ installation
 - Maven 3.6+ installation
